@@ -97,10 +97,10 @@ io.on("connection", (socket) => {
       currentUser = null;
     }
     console.log("User Disconnected");
-  })
-
-
-  
+  });
+  socket.on("typing", ({ roomId, userName }) => {
+    socket.to(roomId).emit("show-typing",userName);
+  });
 });
 
 // Server ko port 5000 pe start karo (ya environment me jo bhi port set ho uspe)

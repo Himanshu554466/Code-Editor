@@ -12,6 +12,8 @@ function App() {
   const [code, setCode] = useState("");
   const [copySuccess, setCopySuccess] = useState("");
   const [users, setUsers] = useState([]);
+  const [typing, setTyping] = useState("");
+
 
   useEffect(() => {
     socket.on("userJoined", (users) => {
@@ -22,13 +24,20 @@ function App() {
       setCode(newCode);
     })
     
-
+    socket.on("show-typing", (user) => {
+      setTyping(`${user.slice(0, 8)}... is Typing`);
+      setTimeout(() => setTyping(""), 2000);
+    });
+    //cleanUp function
     return () => {
       socket.off("userJoined")
       socket.off("receive-code")
+      socket.off("userTyping");
     }
   },[]);
 
+
+    // doubt
   useEffect(() => {
     const handleBeforeUnload = () => {
       socket.emit("leaveRoom");
@@ -58,6 +67,8 @@ function App() {
     setCode(newCode);
     //connect our editior with socket
     socket.emit("code-change", { roomId, code: newCode });
+    socket.emit("typing", { roomId, userName });
+
   };
 
   if (!joined) {
@@ -102,7 +113,7 @@ function App() {
             <li key={index}>{user.slice(0,8)}....</li>
           ))}
         </ul>
-        <p className="typing-indicator "> user typing.....</p>
+        <p className="typing-indicator "> {typing}</p>
         <select
           className="language-selector"
           value={language}
