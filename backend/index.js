@@ -73,6 +73,34 @@ io.on("connection", (socket) => {
     // Console me room ID print karo
     console.log("user Joined room", roomId)
   });
+
+
+  //connect editor with socket
+  socket.on("code-change", ({ roomId, code }) => {
+    socket.to(roomId).emit("update-code", code);
+  });
+
+  socket.on("disconnect",()=> {
+    if(currentRoom && currentUser){
+      rooms.get(currentRoom).delete(currentUser);
+      io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom)));
+    }
+    console.log("User Disconnected");
+  })
+
+  socket.on("leaveRoom",()=> {
+    if(currentRoom && currentUser){
+      rooms.get(currentRoom).delete(currentUser);
+      io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom)));
+      socket.leave(currentRoom);
+      currentRoom = null;
+      currentUser = null;
+    }
+    console.log("User Disconnected");
+  })
+
+
+  
 });
 
 // Server ko port 5000 pe start karo (ya environment me jo bhi port set ho uspe)
