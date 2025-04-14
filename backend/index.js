@@ -74,7 +74,6 @@ io.on("connection", (socket) => {
     console.log("user Joined room", roomId)
   });
 
-
   //connect editor with socket
   socket.on("code-change", ({ roomId, code }) => {
     socket.to(roomId).emit("update-code", code);
@@ -98,9 +97,15 @@ io.on("connection", (socket) => {
     }
     console.log("User Disconnected");
   });
+
   socket.on("typing", ({ roomId, userName }) => {
     socket.to(roomId).emit("show-typing",userName);
   });
+
+  socket.on("language-change", ({ roomId, language }) => {
+    socket.to(roomId).emit("language-updated", language);
+  });
+  
 });
 
 // Server ko port 5000 pe start karo (ya environment me jo bhi port set ho uspe)

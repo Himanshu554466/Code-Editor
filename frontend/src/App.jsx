@@ -8,8 +8,8 @@ function App() {
   const [joined, setJoined] = useState(false);
   const [roomId, setRoomId] = useState("");
   const [userName, setUserName] = useState("");
-  const [language, setLanguage] = useState("C++");
-  const [code, setCode] = useState("");
+  const [language, setLanguage] = useState("cpp");
+  const [code, setCode] = useState("// Let,s start");
   const [copySuccess, setCopySuccess] = useState("");
   const [users, setUsers] = useState([]);
   const [typing, setTyping] = useState("");
@@ -28,11 +28,16 @@ function App() {
       setTyping(`${user.slice(0, 8)}... is Typing`);
       setTimeout(() => setTyping(""), 2000);
     });
+
+    socket.on("language-updated", (newLang) => {
+      setLanguage(newLang);
+    });
     //cleanUp function
     return () => {
       socket.off("userJoined")
-      socket.off("receive-code")
-      socket.off("userTyping");
+      socket.off("update-code")
+      socket.off("show-typing");
+      socket.off("language-updated");
     }
   },[]);
 
@@ -57,10 +62,25 @@ function App() {
     }
   };
 
+  const leaveRoom = () => {
+    socket.emit("leaveRoom");
+    setJoined(false);
+    setRoomId("");
+    setUserName("");
+    setCode("// Let,s start");
+    setLanguage("cpp");
+  };
+
   const copyRoomId = () => {
     navigator.clipboard.writeText(roomId);
     setCopySuccess("Copied!");
     setTimeout(() => setCopySuccess(""), 4000);
+  };
+
+  const handleLanguageChange = (e) => {
+    const newLang = e.target.value;
+    setLanguage(newLang);
+    socket.emit("language-change", { roomId, language: newLang });
   };
 
   const handlecodechange = (newCode) => {
@@ -117,14 +137,14 @@ function App() {
         <select
           className="language-selector"
           value={language}
-          onChange={(e) => setLanguage(e.target.value)}
+          onChange={handleLanguageChange}
         >
           <option value="javascript">JavaScript</option>
           <option value="python">Python</option>
           <option value="java">Java</option>
           <option value="cpp">C++</option>
         </select>
-        <button className="leave-button"> Leave</button>
+        <button className="leave-button" onClick={leaveRoom}> Leave</button>
       </div>
       <div className="editor-wrapper">
         <Editor
