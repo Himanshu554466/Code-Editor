@@ -151,7 +151,7 @@ body {
   }
 
   .editor-wrapper {
-    flex-grow: 1;
+    flex-grow: 2;
     background-color: #fff;
   }
 }
