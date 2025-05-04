@@ -151,7 +151,28 @@ body {
   }
 
   .editor-wrapper {
-    flex-grow: 2;
+    flex-grow: 1;
     background-color: #fff;
   }
 }
+
+.run-btn {
+  background-color: rgb(12, 209, 38);
+  padding: 10px;
+}
+
+.output-console {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  font-size: 20px;
+  height: 200px;
+}
+.code-explain-container {
+  margin-top: 20px;
+  padding: 10px;
+  background: #1e1e1e;
+  border-radius: 8px;
+  color: #fff;
+}
+

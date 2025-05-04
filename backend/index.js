@@ -1,112 +1,144 @@
-// Express framework ko import kiya (ye server banane ke kaam aata hai)
+// Importing necessary modules
 import express from "express";
-
-// HTTP module import kiya (ye Express ke saath socket.io use karne ke liye zaroori hai)
 import http from "http";
-
-// socket.io ko import kiya (real-time connection handle karta hai frontend aur backend ke beech)
 import { Server } from "socket.io";
-
-// path module import kiya (static files ka sahi path set karne ke liye use hota hai, future use ke liye)
 import path from "path";
+import axios from "axios";
 
-// Express ka app banaya, jisse server start hoga
+// Creating an Express application
 const app = express();
-
-// Express ke app ke upar ek HTTP server banaya (ye zaroori hai taaki Socket.IO uske upar kaam kare)
+// Creating an HTTP server using Express
 const server = http.createServer(app);
 
-// Socket.IO ka server banaya aur usme CORS enable kiya
-// CORS ka matlab hai ki koi bhi frontend (chahe kisi bhi port pe ho) is server se connect kar sakta hai
+// Initializing Socket.io server with CORS enabled for all origins
 const io = new Server(server, {
   cors: {
-    origin: "*", // "*" ka matlab — sabhi origins allow hain (dev ke liye sahi hai)
+    origin: "*",
   },
 });
 
-// Ek Map banaya jisme sabhi rooms ka data store hoga
-// Map basically ek object jaise hota hai jisme 'roomId' key hoti hai, aur uske value hoti hai Set of users
-// Eg: { "room123": Set("Himanshu", "Ravi") }
+// A Map to store room data, including users, startTime, and code output
 const rooms = new Map();
 
-// Jab bhi koi user connect kare (yaani kisi ne browser pe site open kiya ho), to yeh chalega
+// Handle new socket connection
 io.on("connection", (socket) => {
-  console.log("User Connected", socket.id); // Har user ka unique socket ID hota hai, usko console me dikhaya
+  console.log("User Connected", socket.id);
 
-  // Har user ke liye uska current room aur uska naam store karne ke liye variables banaye
   let currentRoom = null;
   let currentUser = null;
 
-  // Jab user kisi room ko join kare, to yeh code chalega
+  // Handle user joining a room
   socket.on("join", ({ roomId, userName }) => {
-    // Pehle check kiya ki kya user already kisi room me tha
+    // If already in a room, leave it and update the user list
     if (currentRoom) {
-      // Agar tha, to us room ko chhoda do (leave)
       socket.leave(currentRoom);
-
-      // Room ke Set (yaani user list) se user ka naam hata do
-      rooms.get(currentRoom).delete(currentUser);
-
-      // Room ke bache huye users ko updated user list bhejo
-      io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom)));
+      rooms.get(currentRoom).users.delete(currentUser);
+      io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom).users));
     }
 
-    // Ab naye room aur naye user ka data store karo
+    // Update current room and user variables
     currentRoom = roomId;
     currentUser = userName;
-
-    // Socket ko naye room mein join kara do
     socket.join(roomId);
 
-    // Agar room pehli baar ban raha hai to ek Set banao (Set = unique users ki list)
-    // Set isliye use karte hain kyunki ye same naam ko duplicate nahi hone deta
+    // Create a new room if it doesn't exist
     if (!rooms.has(roomId)) {
-      rooms.set(roomId, new Set()); // Set bana ke Map me store kiya
+      rooms.set(roomId, {
+        users: new Set(),         // Set of user names
+        startTime: Date.now(),    // Timer starts when the room is created
+        output: "",               // Stores the last compiled output
+      });
     }
 
-    // Us room ke Set me user ko add karo
-    rooms.get(roomId).add(userName);
+    // Add the user to the room
+    const room = rooms.get(roomId);
+    room.users.add(userName);
 
-    // Us room ke sabhi users ko notify karo ki user list update ho gayi hai
-    io.to(roomId).emit("userJoined", Array.from(rooms.get(currentRoom)));
+    // Send the room's start time to the newly joined user (for timer UI)
+    socket.emit("startTime", room.startTime);
 
-    // Console me room ID print karo
-    console.log("user Joined room", roomId)
+    // Notify all users in the room about the updated user list
+    io.to(roomId).emit("userJoined", Array.from(room.users));
   });
 
-
-  //connect editor with socket
-  socket.on("code-change", ({ roomId, code }) => {
-    socket.to(roomId).emit("update-code", code);
+  // Broadcast code changes to other users in the room
+  socket.on("codeChange", ({ roomId, code }) => {
+    socket.to(roomId).emit("codeUpdate", code);
   });
 
-  socket.on("disconnect",()=> {
-    if(currentRoom && currentUser){
-      rooms.get(currentRoom).delete(currentUser);
-      io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom)));
-    }
-    console.log("User Disconnected");
-  })
-
-  socket.on("leaveRoom",()=> {
-    if(currentRoom && currentUser){
-      rooms.get(currentRoom).delete(currentUser);
-      io.to(currentRoom).emit("userJoined", Array.from(rooms.get(currentRoom)));
+  // Handle user leaving a room
+  socket.on("leaveRoom", () => {
+    if (currentRoom && currentUser) {
+      const room = rooms.get(currentRoom);
+      if (room) {
+        room.users.delete(currentUser);
+        io.to(currentRoom).emit("userJoined", Array.from(room.users));
+      }
       socket.leave(currentRoom);
+
+      // If room is empty after leaving, delete the room
+      if (room && room.users.size === 0) {
+        rooms.delete(currentRoom);
+      }
+
       currentRoom = null;
       currentUser = null;
     }
-    console.log("User Disconnected");
   });
+
+  // Notify others when a user is typing
   socket.on("typing", ({ roomId, userName }) => {
-    socket.to(roomId).emit("show-typing",userName);
+    socket.to(roomId).emit("userTyping", userName);
+  });
+
+  // Notify others about language change
+  socket.on("languageChange", ({ roomId, language }) => {
+    io.to(roomId).emit("languageUpdate", language);
+  });
+
+  // Handle code compilation using Piston API
+  socket.on("compileCode", async ({ code, roomId, language, version }) => {
+    if (rooms.has(roomId)) {
+      // Send code to Piston API for execution
+      const response = await axios.post(
+        "https://emkc.org/api/v2/piston/execute",
+        {
+          language,
+          version,
+          files: [
+            {
+              content: code,
+            },
+          ],
+        }
+      );
+
+      // Save the output and send it to all users in the room
+      rooms.get(roomId).output = response.data.run.output;
+      io.to(roomId).emit("codeResponse", response.data);
+    }
+  });
+
+  // Handle user disconnect
+  socket.on("disconnect", () => {
+    if (currentRoom && currentUser) {
+      const room = rooms.get(currentRoom);
+      if (room) {
+        room.users.delete(currentUser);
+        io.to(currentRoom).emit("userJoined", Array.from(room.users));
+
+        // Delete the room if no users remain
+        if (room.users.size === 0) {
+          rooms.delete(currentRoom);
+        }
+      }
+    }
+    console.log("user Disconnected");
   });
 });
 
-// Server ko port 5000 pe start karo (ya environment me jo bhi port set ho uspe)
+// Start the server on the specified port (default is 5000)
 const port = process.env.PORT || 5000;
-
-// Server chalu hone ke baad console me message print karo
 server.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+  console.log("server is working on port 5000");
 });
