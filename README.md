@@ -60,7 +60,7 @@ npm start
 Open the app in two tabs and join the same room ID to test real-time sync, AI explanations, and timer.
 ## Screenshots
 
-![App Screenshot](./assets/real_tim.png)
+![App Screenshot](./frontend/src/assets/real_tim.png)
 
 
 ## 🔮 Future Enhancements
