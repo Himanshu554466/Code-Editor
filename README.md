@@ -61,6 +61,7 @@ Open the app in two tabs and join the same room ID to test real-time sync, AI ex
 ## Screenshots
 ![App Screenshot](./frontend/src/assets/real_timeCode.png)
 ![App Screenshot](./frontend/src/assets/real_tim.png)
+![App Screenshot](./frontend/src/assets/image.png)
 
 
 ## 🔮 Future Enhancements
