@@ -58,10 +58,15 @@ npm start
 ```
 ## 🧪 Sample Usage
 Open the app in two tabs and join the same room ID to test real-time sync, AI explanations, and timer.
+
 ## Screenshots
 ![App Screenshot](./frontend/src/assets/real_timeCode.png)
 ![App Screenshot](./frontend/src/assets/real_tim.png)
 ![App Screenshot](./frontend/src/assets/image.png)
+
+## 📹 Demo Video
+
+[![Watch the video](https://img.youtube.com/vi/VIDEO_ID/0.jpg)](https://drive.google.com/file/d/1DmeFo3lL5M9oOWNCvWhHwDju9CRglMqW/view?usp=drive_link)
 
 
 ## 🔮 Future Enhancements
